@@ -1,4 +1,4 @@
-# IPS 签名库 — 扫描 OpenResty access.log 检测漏网攻击
+# IPS 签名库 — 扫描 Web 服务器 access.log 检测漏网攻击
 # 每个类别是签名列表，URI 和 User-Agent 都会匹配（URL 解码后二次匹配）
 # 新增签名直接加在对应类别下即可
 #

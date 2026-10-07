@@ -38,7 +38,7 @@
 | 数据 | 来源 | 用途 |
 |------|------|------|
 | 规则命中 | attack_logs.db + rules.db + rule_types.db + ips.db | 规则权重 |
-| URI/频率/UA/TLS垃圾 | OpenResty access.log | 行为特征 |
+| URI/频率/UA/TLS垃圾 | Web 服务器 access.log | 行为特征 |
 | SSH 失败 | fail2ban.log 系列（zgrep） | brute 特征 |
 | GeoIP/ASN | ip-api.com（缓存） | 画像增强 |
 

@@ -281,7 +281,7 @@ def get_fail2ban_ips():
                             if ip.count(".") == 3: ips.add(ip)
     return ips
 
-# ─── 1Panel WAF（PRAGMA 自适应） ───────────────────────
+# ─── WAF（PRAGMA 自适应） ───────────────────────
 _waf_schema = None
 def detect_waf_schema():
     global _waf_schema

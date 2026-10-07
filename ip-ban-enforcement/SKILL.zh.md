@@ -29,7 +29,7 @@ triggers:
 
 # IP 封禁执行专家
 
-> 🌐 语言：**中文**（本文件，运行时加载入口） · [**English**](SKILL.en.md) · [中文副本](SKILL.zh.md)
+> 🌐 语言：**中文**（本文件） · [**English**](SKILL.en.md)
 
 管理 iptables PERMA-BAN 链，联动 fail2ban、WAF、攻击日志分级和 IPS 签名检测，多源自动封禁。脚本在 `scripts/`，配置在 `knowledge/`（YAML 即生效），完整规格见 `references/intent-analysis.md`。
 
