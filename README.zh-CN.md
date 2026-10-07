@@ -38,6 +38,8 @@ cp -r ip-ban-enforcement linux-threat-hunter ~/.hermes/skills/
 
 或直接取 [Releases](../../releases) 里打包好的 zip。
 
+每个技能带两份内容一致的文档：`SKILL.md`（中文）与 `SKILL.en.md`（英文），按需取用；运行时按约定加载 `SKILL.md`。
+
 **无需手工改配置就能跑** —— 每个配置文件都会回退到内置缺省（`pyyaml` 缺失也会回退）。下面三处都属于**可选**调整：
 
 | 配置 | 是否必须 | 说明 |

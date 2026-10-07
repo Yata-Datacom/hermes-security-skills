@@ -39,6 +39,8 @@ cp -r ip-ban-enforcement linux-threat-hunter ~/.hermes/skills/
 
 Or grab the packaged zips from [Releases](../../releases).
 
+Each skill ships two documents with identical content — `SKILL.md` (Chinese) and `SKILL.en.md` (English). Pick your language; the runtime loads `SKILL.md` by convention.
+
 **It runs without you hand-editing anything** — every config file falls back to built-in defaults (`pyyaml` missing also falls back). Three things are *optional* to tune:
 
 | Config | Required? | Notes |

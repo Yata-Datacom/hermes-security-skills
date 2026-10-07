@@ -8,7 +8,7 @@ allowed-tools:
 version: 2.2.0
 ---
 
-> 🌐 Language: **English** (this file) · [**中文**](SKILL.zh.md)
+> 🌐 Language: **English** (this file) · [**中文**](SKILL.md)
 
 # Linux Threat Hunter
 

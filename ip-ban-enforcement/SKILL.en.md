@@ -27,7 +27,7 @@ triggers:
   - "cron: Sunday 03:00 sync / 03:30 delta / 03:45 IPS / 04:00 ASN+intent / 05:00 maintenance"
 ---
 
-> 🌐 Language: **English** (this file) · [**中文**](SKILL.zh.md)
+> 🌐 Language: **English** (this file) · [**中文**](SKILL.md)
 
 # IP Ban Enforcement
 
