@@ -1,50 +1,63 @@
-# Security Operations Skills（Hermes Agent 技能包）
+<div align="center">
 
-两个可直接装载的 AI Agent 技能（Skill），覆盖**攻击来源研判与封禁执行**、**Linux 威胁狩猎与隐蔽信道检测**。均为实际生产环境使用过的版本，已做通用化与脱敏处理，随包提供降级方案，可在普通发行版上直接运行。
+# Security Operations Skills
 
-| 技能 | 定位 | 核心能力 |
+**Two drop-in skills for AI agents — IP-ban orchestration with threat-intent analysis, and Linux threat hunting (ICMP/DNS tunnels, C2 beacons, DGA domains).**
+
+<sub>[**English**](README.md) · [**简体中文**](README.zh-CN.md)</sub>
+
+<img src="https://img.shields.io/badge/License-MIT-8FBCBB?style=flat-square" alt="MIT" />
+<img src="https://img.shields.io/badge/Python-3.9%2B-8FBCBB?style=flat-square&logo=python&logoColor=white" alt="Python 3.9+" />
+<img src="https://img.shields.io/badge/Platform-Linux-88C0D0?style=flat-square&logo=linux&logoColor=white" alt="Linux" />
+<img src="https://img.shields.io/badge/Role-Defensive%20Security-5E81AC?style=flat-square" alt="Defensive security" />
+
+</div>
+
+Two skills, each a self-contained package (`SKILL.md` + `scripts/` + `knowledge/` + `references/`) that an AI agent can load directly. Both are production-tested versions, genericised and sanitised for public release.
+
+| Skill | Role | Core capabilities |
 |---|---|---|
-| [`ip-ban-enforcement`](./ip-ban-enforcement) | IP 封禁分析与执行 | 六模式合一的封禁引擎（全量同步 / 每日增量 / IPS 签名检测 / 数据分析 / 状态趋势 / 自动维护）；**威胁意图分析引擎**（4 维特征 → 5 类意图 + 置信度，双出口：封禁实时打标 + 每日攻击者画像）；ASN 动态发现与网段级拦截；住宅 ISP 误封豁免；GeoIP 缓存；老化验证与趋势追踪 |
-| [`linux-threat-hunter`](./linux-threat-hunter) | Linux 高级威胁狩猎 | 不依赖任何防火墙厂商告警，只用原始包长与行为特征：ICMP 隧道 / DNS 隧道 / C2 信标（间隔变异系数）/ DGA 域名（四维评分）/ 异常外联检测；行为评分器；自动封堵（本机 + 转发双链，定时解封）；案例库自学习 |
+| [`ip-ban-enforcement`](./ip-ban-enforcement) | Attack-source triage and ban execution | Six-mode ban engine (full sync / daily delta / IPS signature scan / data analysis / trend report / auto maintenance); **threat-intent analysis engine** (4 features → 5 intent classes + confidence; dual output: real-time ban tagging + daily attacker profile); ASN discovery with subnet-level blocking; residential-ISP false-positive exemption; GeoIP cache; aging verification |
+| [`linux-threat-hunter`](./linux-threat-hunter) | Advanced Linux threat hunting | Trusts raw packet length and behaviour, **not** vendor alerts: ICMP tunnel / DNS tunnel / C2 beacon (interval coefficient of variation) / DGA domains (4-dimension score) / anomalous egress; behaviour scorer; auto-block (OUTPUT + FORWARD chains, timed release); self-learning case library |
 
-## 设计取向
+## Design stance
 
-- **只信原始证据**：不信厂商告警，只信抓包长度、字节比与日志原文
-- **多后端降级**：抓包 `tshark` 缺失自动退 `tcpdump`；封堵 `ipset` 缺失自动退纯 `iptables`；规则 `pyyaml` 缺失回退内置默认规则
-- **默认预演**：破坏性操作（封禁删除、规则清理）默认 dry-run，需显式参数才写入
-- **可配置优先**：规则、阈值、签名、网段全部外置为 YAML，编辑即生效，不用改代码
-- **配置与代码同源**：代码内置兜底默认值，配置缺失也能跑
+- **Raw evidence only** — no trust in firewall vendor alerts; only capture lengths, byte ratios and raw log lines
+- **Degrade, never fail** — `tshark` → `tcpdump`; `ipset` → plain `iptables`; `pyyaml` → built-in default rules
+- **Dry-run by default** — destructive actions (ban deletion, rule cleanup) need an explicit flag to write
+- **Configuration first** — rules, thresholds, signatures and subnets all live in editable YAML, effective without touching code
+- **Code carries its own fallback** — missing config still runs, because sensible defaults are inline
 
-## 装载方式
+## Install
 
-两个目录都是标准技能包结构（`SKILL.md` + `scripts/` + `knowledge/` + `references/`）：
+Both directories are standard skill packages:
 
 ```bash
-# 以 Hermes Agent 为例：把技能目录放进技能库
+# e.g. for Hermes Agent: drop them into the skills directory
 cp -r ip-ban-enforcement linux-threat-hunter ~/.hermes/skills/
-
-# 或直接使用随包 zip（与仓库同结构）
 ```
 
-**无需手工改配置就能跑**：两个技能都是「配置缺失即用内置缺省」的设计，`pyyaml` 缺失也会回退内置规则。下面三处都属于**可选**调整：
+Or grab the packaged zips from [Releases](../../releases).
 
-| 配置 | 是否必须 | 说明 |
+**It runs without you hand-editing anything** — every config file falls back to built-in defaults (`pyyaml` missing also falls back). Three things are *optional* to tune:
+
+| Config | Required? | Notes |
 |---|---|---|
-| WAF 数据库 / 访问日志路径<br>`ip-ban-enforcement/knowledge/thresholds.yaml` | **不必手填** | 缺省是通用路径（`/var/lib/waf/`、`/var/log/nginx/access.log`）。实际的库文件与日志在哪，**交给你的 AI Agent 现场探测**即可 —— 它有 shell 权限，可以直接反查进程、面板安装目录与配置文件把路径找出来，比手抄更准 |
-| 恶意网段列表<br>`ip-ban-enforcement/knowledge/subnets.yaml` | **无需预置** | 这是一个**自增长列表**：命中即写入、老化自动回收。起手留空也能跑，不需要拷贝别人的情报 |
-| 行为评分权重与阈值<br>`linux-threat-hunter/knowledge/rules.yaml` | 仅作**参考** | 仓库里带的是作者环境调出来的**参考值 —— 仅供参考**。你的流量基线不同，权重与阈值应当按自己的环境重新校准 |
+| WAF DB / access-log paths<br>`ip-ban-enforcement/knowledge/thresholds.yaml` | **No** | Ships with generic defaults (`/var/lib/waf/`, `/var/log/nginx/access.log`). Where your actual DB and logs live is best **discovered on the spot by your AI agent** — it has shell access and can trace the process, panel install dir and config files, which beats hand-copying a path |
+| Malicious subnet list<br>`ip-ban-enforcement/knowledge/subnets.yaml` | **No preset needed** | This is a **self-growing list**: hits are written in, aging reclaims them. Starting empty is fine — you do not need to copy someone else's intel |
+| Behaviour scoring weights & thresholds<br>`linux-threat-hunter/knowledge/rules.yaml` | **Reference only** | What ships was tuned in the author's environment — **for reference only**. Your traffic baseline differs; recalibrate against your own |
 
-> 也就是说：装上去就能开始用，配置是「用着用着按需调」，不是「装之前必须先填表」。
+> In short: install it and start using it. Config is adjusted as you go, not filled in before you begin.
 
-## 依赖
+## Requirements
 
-- `python3`（标准库为主）+ 可选 `pyyaml`
-- 抓包：`tcpdump`（必需）/ `tshark`（可选，功能更完整）
-- 封堵：`ipset`（可选）/ `iptables`
-- 归属查询：系统 `whois`、`ip-api.com`（批量 GeoIP）
+- `python3` (standard library mostly) + optional `pyyaml`
+- Capture: `tcpdump` (required) / `tshark` (optional, richer fields)
+- Blocking: `ipset` (optional) / `iptables`
+- Attribution: system `whois`, `ip-api.com` (batch GeoIP)
 
-## 声明
+## Disclaimer
 
-- 本仓库为**防御性**安全工具：用于分析针对自己服务器的攻击、执行封禁、检测隐蔽信道。请仅在你有权管理的系统上使用。
-- 仓库内所有 IP、网段、路径、时区示例均为占位或文档地址（RFC 5737 / 私有段），不含任何真实环境数据。
+- These are **defensive** security tools: analyse attacks against servers you run, enforce bans, detect covert channels. Use them only on systems you are authorised to manage.
+- Every IP, subnet, path and timezone example in this repository is a placeholder or a documentation value (RFC 5737 / private ranges). No real environment data is included.
 - MIT License.
