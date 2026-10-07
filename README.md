@@ -26,11 +26,15 @@ cp -r ip-ban-enforcement linux-threat-hunter ~/.hermes/skills/
 # 或直接使用随包 zip（与仓库同结构）
 ```
 
-部署前请按你的环境修改：
+**无需手工改配置就能跑**：两个技能都是「配置缺失即用内置缺省」的设计，`pyyaml` 缺失也会回退内置规则。下面三处都属于**可选**调整：
 
-1. `ip-ban-enforcement/knowledge/thresholds.yaml` —— WAF 数据库与访问日志路径（示例为 `/var/lib/waf/`、`/var/log/nginx/access.log`）、白名单
-2. `ip-ban-enforcement/knowledge/subnets.yaml` —— 恶意网段列表（仓库内为示例占位，请填入你自己的情报）
-3. `linux-threat-hunter/knowledge/rules.yaml` —— 行为评分权重与阈值
+| 配置 | 是否必须 | 说明 |
+|---|---|---|
+| WAF 数据库 / 访问日志路径<br>`ip-ban-enforcement/knowledge/thresholds.yaml` | **不必手填** | 缺省是通用路径（`/var/lib/waf/`、`/var/log/nginx/access.log`）。实际的库文件与日志在哪，**交给你的 AI Agent 现场探测**即可 —— 它有 shell 权限，可以直接反查进程、面板安装目录与配置文件把路径找出来，比手抄更准 |
+| 恶意网段列表<br>`ip-ban-enforcement/knowledge/subnets.yaml` | **无需预置** | 这是一个**自增长列表**：命中即写入、老化自动回收。起手留空也能跑，不需要拷贝别人的情报 |
+| 行为评分权重与阈值<br>`linux-threat-hunter/knowledge/rules.yaml` | 仅作**参考** | 仓库里带的是作者环境调出来的**参考值 —— 仅供参考**。你的流量基线不同，权重与阈值应当按自己的环境重新校准 |
+
+> 也就是说：装上去就能开始用，配置是「用着用着按需调」，不是「装之前必须先填表」。
 
 ## 依赖
 
