@@ -1,0 +1,77 @@
+# 网络威胁意图分析配置 — intent_analysis.py / ip_ban_sync.py 共用
+# 判定模型：对每个 IP 聚合特征 → 规则权重 + 行为特征加权得分 → 最高分占比判定意图
+# 编辑即生效（脚本运行时读取）
+
+# 意图类别定义（显示名 + 处置建议）
+intent_categories:
+  recon:   {label: "🕵️ 侦察扫描",   action: "封禁观察（30天老化自动清理）"}
+  brute:   {label: "💥 暴力破解",   action: "长封 + fail2ban 联动"}
+  exploit: {label: "🎯 定向攻击",   action: "永久封 + 溯源分析 + 升级监控"}
+  botnet:  {label: "🤖 僵尸网络",   action: "子网段/ASN 级拦截"}
+  abuse:   {label: "🕷️ 爬虫/CC滥用", action: "短封即可（CC 规则已限速）"}
+
+# WAF 规则名 → 意图权重（命中累加）
+# 规则名来自 attack_logs.db 双维度（rules.db + rule_types.db）
+rule_intent_weights:
+  unknownWebsite:   {recon: 2, botnet: 1}   # 陌生域名探测 = 批量扫描
+  notFoundCount:    {recon: 2}              # 404 刷量 = 目录枚举
+  dirFilter:        {recon: 3}              # 目录遍历尝试
+  scannerFilter:    {recon: 3, botnet: 1}   # 扫描器特征
+  defaultUrlBlack:  {recon: 1}
+  defaultUaBlack:   {botnet: 3, recon: 1}   # 已知恶意 UA = 僵尸网络
+  attackCount:      {brute: 2, abuse: 1}    # 攻击计数聚合
+  defaultIpBlack:   {botnet: 2, recon: 1}   # WAF内置IP信誉命中=已知恶意源，非爆破特征
+  sql:              {exploit: 4, brute: 1}  # SQLi payload = 定向利用尝试
+  xss:              {exploit: 4}
+  oneWordTrojan:    {exploit: 5}            # 一句话木马 = 明确的入侵企图
+  appFilter:        {exploit: 3, recon: 1}  # 应用层漏洞探测
+  args:             {exploit: 2}
+
+# 行为特征 → 意图加分（基于 access.log / auth.log / fail2ban 聚合）
+behavior_weights:
+  ssh_found_high:      {brute: 3}   # 同一 IP SSH 失败 ≥ ssh_found_threshold 次
+  ssh_found_persist:   {brute: 2}   # SSH 失败跨 ≥2 天（持久性）
+  uri_wide:            {recon: 2}   # 触碰 URI ≥ uri_wide_threshold 个（广撒网）
+  uri_narrow_repeat:   {brute: 2, exploit: 1}  # 反复打同一路径（盯上某点）
+  high_freq:           {brute: 1, abuse: 1}    # 高频请求（≥ high_freq_threshold/天）
+  low_freq_precise:    {exploit: 2}  # 低频但精准命中业务路径（sql/xss 规则+少量请求）
+  tls_junk:            {recon: 2}   # TLS 握手打到 HTTP 端口（端口/协议探测）
+  scan_ua:             {recon: 2, botnet: 1}   # 扫描器 UA 特征
+
+# 判定阈值
+thresholds:
+  min_score: 3              # 总分低于此 → unknown（路过/无害）
+  dominance_ratio: 0.50     # 最高分 / 总分 ≥ 此值才判定，否则 mixed（混合意图）
+  window_days: 7            # 分析窗口（天）
+  ssh_found_threshold: 5    # SSH 失败 ≥N 次触发 brute 加分
+  uri_wide_threshold: 20    # URI ≥N 个触发 recon 加分
+  high_freq_threshold: 100  # 请求 ≥N 次/天触发 abuse 加分
+  top_n: 15                 # 画像报告默认展示 Top N
+
+# 扫描器 UA 特征（匹配 access.log UA 字段）
+scanner_ua_patterns:
+  - "masscan"
+  - "zgrab"
+  - "nmap"
+  - "nikto"
+  - "sqlmap"
+  - "python-requests"
+  - "curl/"
+  - "wget"
+  - "go-http-client"
+  - "scanner"
+  - "fofa"
+  - "censys"
+  - "shodan"
+  - "majestic-12"
+  - "semrush"
+  - "ahrefs"
+
+# 处置分级（intent → 封禁策略，供报告建议使用）
+disposition_priority:
+  exploit: 5   # 最高：永久封
+  brute:   4
+  botnet:  3
+  recon:   2
+  abuse:   1
+  unknown: 0

@@ -1,0 +1,49 @@
+# 住宅 ISP 关键词 — 匹配到的 IP 标注为"\u7591\u4f3c\u8bef\u5c01"
+patterns:
+  - chinanet
+  - china telecom
+  - \u4e2d\u56fd\u7535\u4fe1
+  - chinaunicom
+  - china unicom
+  - \u4e2d\u56fd\u8054\u901a
+  - chinamobile
+  - china mobile
+  - \u4e2d\u56fd\u79fb\u52a8
+  - telenor
+  - telkomsel
+  - telkom
+  - indihome
+  - viettel
+  - vnpt
+  - fpt telecom
+  - comcast
+  - spectrum
+  - charter
+  - cox
+  - verizon
+  - deutsche telekom
+  - telefonica
+  - orange
+  - bt
+  - kddi
+  - softbank
+  - ntt
+  - au one
+  - singtel
+  - starhub
+  - m1
+  - tm net
+  - unifi
+  - time dotcom
+  - true online
+  - ais
+  - dtac
+  - jio
+  - airtel
+  - bsnl
+  - vodafone
+  - swisscom
+  - telia
+  - beeline
+  - megafon
+  - mts

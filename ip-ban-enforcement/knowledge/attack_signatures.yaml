@@ -1,0 +1,151 @@
+# IPS 签名库 — 扫描 OpenResty access.log 检测漏网攻击
+# 每个类别是签名列表，URI 和 User-Agent 都会匹配（URL 解码后二次匹配）
+# 新增签名直接加在对应类别下即可
+#
+# ⚠️ 注意：access.log 只记录请求行（URI + UA），POST body 不记录！
+#   因此 XXE/上传内容等 body 内特征主要靠 WAF 的 fileExt/sql/xss 模块，
+#   本签名库负责 URI/UA 层的漏网检测（双保险）。
+
+sql_injection:
+  - "union select"
+  - "union+select"
+  - "union%20select"
+  - "' or 1=1"
+  - "%27 or 1=1"
+  - "sleep("
+  - "benchmark("
+  - "information_schema"
+  - "load_file"
+  - "into outfile"
+  - "0x3c"                # 十六进制编码的 < 字符
+  - "concat("
+
+xss:
+  - "<script"
+  - "%3cscript"
+  - "onerror="
+  - "onload="
+  - "javascript:"
+  - "alert("
+  - "prompt("
+  - "%3csvg"
+  - "document.cookie"
+  - "img src=x"
+
+path_traversal:
+  - "../"
+  - "..%2f"
+  - "%2e%2e"
+  - "..%5c"
+  - "/etc/passwd"
+  - "php://filter"
+  - "file://"
+  - "%00"
+  - "/proc/self"
+
+lfi:                     # 文件包含增强（通用 LFI/RFI 特征）
+  - "php://input"
+  - "php://fd"
+  - "data://text/plain"
+  - "expect://"
+  - "phar://"
+  - "zip://"
+  - "include="
+  - "page=file"
+  - "dir=file"
+  - "template="
+  - "/etc/shadow"
+  - "/etc/hosts"
+  - "c:\\windows\\"
+
+webshell:
+  - "eval("
+  - "base64_decode"
+  - "$_post"
+  - "$_get"
+  - "shell_exec"
+  - "system("
+  - "assert("
+  - "cmd="
+  - "phpinfo"
+  - "一句话"            # 中文一句话木马特征
+
+command_injection:
+  - ";id"
+  - "|whoami"
+  - "$(cat"
+  - "ping -c"
+  - "/bin/sh"
+  - "wget http"
+  - "curl http"
+  - "nc -e"
+  - "bash -i"
+  - "python3 -c"
+  - "perl -e"
+
+ssrf:                    # SSRF 通用特征（WAF 只有 1 条 CVE 规则，这里补通用）
+  - "gopher://"
+  - "dict://"
+  - "file:///etc"
+  - "http://127.0.0.1"
+  - "http://localhost"
+  - "http://169.254.169.254"   # AWS 元数据
+  - "http://10."
+  - "http://172.16."
+  - "http://172.17."
+  - "http://192.168."
+  - "%40"                # @ 编码，SSRF 重定向常用
+  - "?url=http"
+  - "?target=http"
+  - "?redirect=http"
+
+xxe:                     # XXE 特征（WAF 只有 1 条 CVE 规则，URI 层能抓到的）
+  - "<!doctype"
+  - "<!entity"
+  - "xinclude"
+  - "system file:///"
+  - "php://filter"       # 与 path_traversal 重叠，用于 XML 场景
+  - "%3c%21doctype"      # URL 编码 <!DOCTYPE
+  - "%3c%21entity"
+
+upload_abuse:            # 上传滥用（文件扩展名绕过，配合 WAF fileExt）
+  - ".php."              # 双扩展名 shell.php.jpg
+  - ".php%00"
+  - ".jsp."
+  - ".asp;"
+  - "shell.php"
+  - "cmd.php"
+  - "evil.php"
+  - "webshell"
+  - "upload.php"
+  - "filename=*.php"
+  - "filename=*.jsp"
+
+sensitive_files:
+  - ".git/config"
+  - ".env"
+  - "wp-config"
+  - "backup.sql"
+  - "config.php.bak"
+  - "phpinfo.php"
+  - "web.config"
+  - "*.sql.bak"
+
+scanner_ua:
+  - sqlmap
+  - nikto
+  - nmap
+  - acunetix
+  - nessus
+  - zgrab
+  - masscan
+  - l9explore
+  - silovik
+  - awvs
+  - "python-requests"
+  - httpx
+  - "curl/"             # 裸 curl 访问也标记（配合其他签名）
+
+thresholds:
+  min_hits: 2           # 7 天内同一签名类别命中 ≥N 次才封（单次可能误报）
+  window_days: 7        # 扫描窗口（天）

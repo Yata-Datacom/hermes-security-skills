@@ -1,0 +1,8 @@
+# 统一按 LF 存库：shell 脚本若带 CRLF 在 Linux 上会直接报错
+* text=auto
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf

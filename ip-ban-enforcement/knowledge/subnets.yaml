@@ -1,0 +1,24 @@
+# 已知恶意 /24 子网段 — 主动防御列表
+subnets:
+  - subnet: "203.0.113.0/24"
+    comment: bulletproof hosting（示例）
+  - subnet: "198.51.100.0/24"
+    comment: bulletproof hosting（示例）
+  - subnet: "192.0.2.0/24"
+    comment: bulletproof hosting（示例）
+  - subnet: "203.0.113.0/24"
+    comment: bulletproof hosting（示例）
+  - subnet: "198.51.100.0/24"
+    comment: scanning infra（示例）
+  - subnet: "192.0.2.0/24"
+    comment: compromised VPS（示例）
+  - subnet: "203.0.113.0/24"
+    comment: hostile host（示例）
+  - subnet: "198.51.100.0/24"
+    comment: scan VPS（示例）
+  - subnet: "192.0.2.0/24"
+    comment: hostile host（示例）
+  - subnet: "203.0.113.0/24"
+    comment: proxy abuser（示例）
+  - subnet: "198.51.100.0/24"
+    comment: abuser VPS（示例）

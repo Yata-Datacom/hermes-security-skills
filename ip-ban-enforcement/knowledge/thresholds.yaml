@@ -1,0 +1,23 @@
+# ip-ban-enforcement 阈值与路径配置
+thresholds:
+  weekly_scan: 10
+  old_days: 30
+  max_geo_batch: 45
+cache:
+  geoip: ~/.hermes/cache/geoip_cache.json
+  sync_history: ~/.hermes/cache/sync_history.json
+waf:
+  block_db: /var/lib/waf/block_ips.db
+  ips_db: /var/lib/waf/ips.db
+  attack_db: /var/lib/waf/attack_logs.db
+  access_log: /var/log/nginx/access.log
+whitelist:
+  ips:
+    - 203.0.113.10
+    - 100.64.0.1
+    - 127.0.0.1
+  subnets:
+    - 100.64.0.0/10
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16

@@ -1,0 +1,72 @@
+# 威胁狩猎评分规则 — log_hunter.py 读取，编辑即生效
+# 优先级：tunnel > exfil > c2_keepalive > scan
+# 输入日志格式 (管道分隔): timestamp|src_ip|dst_ip|dst_port|bytes_sent|bytes_recv|protocol
+
+columns:
+  time: 1          # 时间戳列
+  src: 2           # 源 IP 列
+  dst: 3           # 目标 IP 列
+  port: 4          # 目标端口列
+  sent: 5          # 上行字节列
+  recv: 6          # 下行字节列
+  proto: 7         # 协议列
+  score_threshold: 60    # ≥60 人工复核
+  block_threshold: 100   # ≥100 立即封禁
+
+rules:
+  # --- 隧道 (50分) ---
+  - name: icmp_tunnel
+    enabled: true
+    field: proto
+    match: ICMP
+    bytes_gt: 500          # ICMP 载荷 >500B（正常 ping 最大 64B）
+    score: 50
+    tag: TUNNEL
+    reason: ICMP 大包疑似隧道
+
+  - name: dns_tunnel
+    enabled: true
+    field: proto
+    match: DNS
+    recv_gt: 1500          # DNS 响应 >1500B（EDNS0 合法上限约 1400B）
+    score: 50
+    tag: TUNNEL
+    reason: DNS 大响应疑似隧道
+
+  # --- 非工作时间外泄 (30分) ---
+  - name: off_hour_exfil
+    enabled: true
+    field: time
+    off_hours: "8-20"      # 工作时间 8:00-20:00，之外为异常
+    sent_gt: 2000          # 上行 >2KB
+    sent_ratio: 1.5        # 上行 > 下行×1.5
+    score: 30
+    tag: EXFIL
+    reason: 非工作时间上行异常疑似外泄
+
+  # --- C2 保持连接 (25分) ---
+  - name: c2_keepalive
+    enabled: true
+    field: port
+    exclude_ports: "80,443,53,123,8080"
+    sent_range: "1000-50000"
+    recv_range: "1000-50000"
+    score: 25
+    tag: C2_KEEPALIVE
+    reason: 非 Web 端口均衡小流量疑似 C2
+
+  # --- 敏感端口境外联 (20分) ---
+  - name: scan_sensitive_port
+    enabled: true
+    field: port
+    ports: "22,3389,445,1433,3306"
+    score: 20
+    tag: SCAN
+    reason: 敏感管理端口外联疑似扫描
+
+  # --- 排除项（误报防护）---
+  - name: known_backup_server
+    enabled: true
+    exclude_when: '(backup|rsync|nfs|mirror|备份)'
+    level: false_positive
+    reason: 备份/同步服务器正常上行流量

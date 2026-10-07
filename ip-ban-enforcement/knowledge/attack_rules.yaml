@@ -1,0 +1,24 @@
+# WAF 攻击规则分级 — 决定封禁优先级
+# 规则名来自 WAF rules.db / rule_types.db，可自行增删
+high_risk:
+  - sql
+  - xss
+  - oneWordTrojan
+medium_risk:
+  - dirFilter
+  - scannerFilter
+  - appFilter
+  - args
+low_risk:
+  - unknownWebsite
+  - notFoundCount
+  - defaultUrlBlack
+  - defaultUaBlack
+  - attackCount
+  - defaultIpBlack
+
+thresholds:
+  high_min_hits: 1        # 高危规则命中 ≥N 次即封（WAF 已确认的攻击，1 次就封）
+  high_window_days: 7     # 高危统计窗口（天）
+  medium_min_hits: 10     # 中危规则（扫描类）7 天 ≥N 次
+  daily_window_hours: 24  # 每日增量扫描窗口（小时）

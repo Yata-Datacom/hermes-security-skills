@@ -1,0 +1,18 @@
+# Bulletproof 托管商关键词 — 匹配到的 IP 自动升级为 /24 子网段拦截
+patterns:
+  - power.line
+  - powerline
+  - as132839
+  - techtie
+  - dmzhost
+  - vmheaven
+  - scaleway
+  - kronnet
+  - hostkey
+  - datacheap
+  - g-core
+  - m247
+  - frantech
+  - global-layer
+  - buyvm
+  - greencloudvps

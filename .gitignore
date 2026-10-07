@@ -1,0 +1,11 @@
+# 运行时产物与本地数据
+__pycache__/
+*.pyc
+*.log
+*.db
+*.db-journal
+
+# 实际部署时产生的情报/缓存，不入库
+cache/
+geoip_cache.json
+sync_history.json
