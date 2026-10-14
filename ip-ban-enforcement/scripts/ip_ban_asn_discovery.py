@@ -5,7 +5,7 @@ auth.log → WHOIS → ≥3次同ASN → RIPE拉取前缀 → 拦截 /24
 import subprocess, re, os, json
 from datetime import datetime, timezone, timedelta
 from collections import Counter
-UTC+8 = timezone(timedelta(hours=8))
+TZ = timezone(timedelta(hours=8))
 MIN_ASN_HITS, WHOIS_MAX_IPS, SKIP_ASNS = 3, 50, {"AS132839"}
 def run(cmd,t=30):
     try: r=subprocess.run(cmd,capture_output=True,text=True,timeout=t); return r.stdout.strip()
@@ -31,7 +31,7 @@ def get_ripe_prefixes(asn):
         if m: p.add(m.group(1))
     return p
 def main():
-    now=datetime.now(UTC+8)
+    now=datetime.now(TZ)
     print(f"🔍 ASN 动态发现 — {now.strftime('%Y-%m-%d %H:%M:%S')} UTC+8\n{'='*55}")
     attackers=get_attacker_ips()
     print(f"\n📡 攻击来源: {len(attackers)} 个")

@@ -34,13 +34,13 @@ if [ "$BACKEND" = "ipset" ]; then
   while read -r raw_ip; do
     ip=$(echo "$raw_ip" | xargs)
     [ -z "$ip" ] && continue
-    if echo "$ip" | grep -qE '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|0\.)'; then
-      echo "⚠  跳过内网地址: $ip" >&2; ((SKIPPED++)); continue
+    if echo "$ip" | grep -qE '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|0\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.|169\.254\.|22[4-9]\.|2[3-5][0-9]\.)'; then
+      echo "⚠  跳过内网/保留地址: $ip" >&2; SKIPPED=$((SKIPPED+1)); continue
     fi
     if ipset add "$IPSET_NAME" "$ip" timeout "$TIMEOUT" 2>/dev/null; then
       echo "🔒 已封禁: $ip (24h 自动解封, OUTPUT+FORWARD)"
       logger -t threat-hunter "BLOCKED $ip (threat-hunter auto-block)"
-      ((BLOCKED++))
+      BLOCKED=$((BLOCKED+1))
     fi
   done
 
@@ -73,7 +73,7 @@ while read -r raw_ip; do
   ip=$(echo "$raw_ip" | xargs)
   [ -z "$ip" ] && continue
   if echo "$ip" | grep -qE '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|0\.)'; then
-    echo "⚠  跳过内网地址: $ip" >&2; ((SKIPPED++)); continue
+    echo "⚠  跳过内网地址: $ip" >&2; SKIPPED=$((SKIPPED+1)); continue
   fi
 
   # 已封禁则跳过（幂等）
@@ -87,7 +87,7 @@ while read -r raw_ip; do
   echo "$(date +%s)|$ip" >> "$STATE_FILE"
   echo "🔒 已封禁: $ip (24h, iptables模式)"
   logger -t threat-hunter "BLOCKED $ip (threat-hunter auto-block iptables)"
-  ((BLOCKED++))
+  BLOCKED=$((BLOCKED+1))
 done
 
 CURRENT=$(iptables -L OUTPUT -n 2>/dev/null | grep -c '^DROP')

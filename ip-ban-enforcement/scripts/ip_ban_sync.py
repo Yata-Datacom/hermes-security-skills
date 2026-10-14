@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 from collections import Counter
 from pathlib import Path
 
-UTC+8 = timezone(timedelta(hours=8))
+TZ = timezone(timedelta(hours=8))
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 # ─── 意图分析集成（A 方案：封禁时打意图标签） ──────
@@ -261,7 +261,7 @@ def annotate_intents(ips, window_hours=168):
 
 def intent_comment(ip, ann):
     """生成 iptables comment：INTENT=<intent> <label> <date>。"""
-    now = datetime.now(UTC+8).strftime("%Y-%m-%d")
+    now = datetime.now(TZ).strftime("%Y-%m-%d")
     a = ann.get(ip)
     if not a: return f"ban {now}"
     return f"INTENT={a['intent'].split(':')[0]} {a['label']} {now}"
@@ -417,7 +417,7 @@ def ips_signature_detect(window_days=7):
     返回: {"ip": {"category": count}}
     """
     if not SIGNATURES or not os.path.exists(ACCESS_LOG): return {}
-    since = datetime.now(UTC+8) - timedelta(days=window_days)
+    since = datetime.now(TZ) - timedelta(days=window_days)
     hits = {}  # ip -> {category: count}
     for ip, uri, ua, status, dt in parse_access_log(ACCESS_LOG, since):
         blob = f"{uri} {ua}".lower()
@@ -454,7 +454,7 @@ def geo_lookup(ips):
             batch = unc[bs:bs+MAX_GEO_BATCH]
             try:
                 d = json.dumps(batch).encode()
-                req = urllib.request.Request("http://ip-api.com/batch", data=d, headers={"Content-Type": "application/json"})
+                req = urllib.request.Request("https://ip-api.com/batch", data=d, headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(req, timeout=15) as r:
                     for rr in json.loads(r.read()):
                         if rr.get("status") == "success":
@@ -479,7 +479,7 @@ def check_ip_still_active(ip, db=7):
     cut = (datetime.now()-timedelta(days=db)).strftime("%Y-%m-%d")
     ef = [f for f in ["/var/log/auth.log","/var/log/auth.log.1"] if os.path.exists(f)]
     if not ef: return False
-    r = subprocess.run(["zgrep","-h",ip,*ef], capture_output=True, text=True, timeout=30)
+    r = subprocess.run(["zgrep","-h","-F",ip,*ef], capture_output=True, text=True, timeout=30)  # -F: IP 按字面量匹配，避免点号当正则
     if r.returncode not in (0,1): return False
     for l in r.stdout.splitlines():
         m = re.match(r"(\d{4}-\d{2}-\d{2})", l)
@@ -524,7 +524,7 @@ def _ban_new_ips(all_new, pi, sc, buf, log, annotate=True):
 
 def do_sync():
     """每周全量同步：fail2ban + WAF + 攻击日志分级 + 低频SSH + 子网段"""
-    now = datetime.now(UTC+8); ns = now.strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(TZ); ns = now.strftime("%Y-%m-%d %H:%M:%S")
     cut = (now-timedelta(days=7)).strftime("%Y-%m-%d")
     buf = []
     def log(s=""): print(s); buf.append(s)
@@ -568,7 +568,9 @@ def do_sync():
         log(f"   {'✅' if s in get_perma_ban_subnets() else '❌'} {s} — {c}")
 
     all_new = (nf | nw | nh | nm | nsc) - WHITELIST_IPS
-    wh_hits = (nf | nw | nh | nm | nsc) & WHITELIST_IPS
+    all_new = {ip for ip in all_new if not in_whitelist(ip)}   # 子网白名单同样豁免
+    wh_hits = ((nf | nw | nh | nm | nsc) & WHITELIST_IPS) | \
+              {ip for ip in (nf | nw | nh | nm | nsc) if in_whitelist(ip)}
     if wh_hits:
         log(f"\n⚪ 白名单跳过: {', '.join(sorted(wh_hits))}")
     if all_new:
@@ -589,7 +591,7 @@ def do_sync():
 
 def do_daily():
     """每日增量：仅扫最近 N 小时攻击日志，高危即封（D 方向）"""
-    now = datetime.now(UTC+8); ns = now.strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(TZ); ns = now.strftime("%Y-%m-%d %H:%M:%S")
     hrs = ATTACK_RULES["daily_window_hours"]
     buf = []
     def log(s=""): print(s); buf.append(s)
@@ -611,7 +613,8 @@ def do_daily():
         log(f"   🟡 {ip} — {rl} {'✅' if ip in pi else '🆕'}")
 
     all_new = (nh | nm) - WHITELIST_IPS
-    wh_hits = (nh | nm) & WHITELIST_IPS
+    all_new = {ip for ip in all_new if not in_whitelist(ip)}   # 子网白名单同样豁免
+    wh_hits = ((nh | nm) & WHITELIST_IPS) | {ip for ip in (nh | nm) if in_whitelist(ip)}
     if wh_hits:
         log(f"\n⚪ 白名单跳过: {', '.join(sorted(wh_hits))}")
     if all_new:
@@ -625,7 +628,7 @@ def do_daily():
 
 def do_ips():
     """IPS 签名检测：扫 access.log 匹配攻击签名（E 方向）"""
-    now = datetime.now(UTC+8); ns = now.strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(TZ); ns = now.strftime("%Y-%m-%d %H:%M:%S")
     buf = []
     def log(s=""): print(s); buf.append(s)
 
@@ -651,7 +654,8 @@ def do_ips():
             if n >= SIG_MIN_HITS:
                 ban_map.setdefault(ip, {})[c] = n
     new_ips = set(ban_map.keys()) - pi - WHITELIST_IPS
-    wh_hits = set(ban_map.keys()) & WHITELIST_IPS
+    new_ips = {ip for ip in new_ips if not in_whitelist(ip)}   # 子网白名单同样豁免
+    wh_hits = (set(ban_map.keys()) & WHITELIST_IPS) | {ip for ip in ban_map.keys() if in_whitelist(ip)}
     if wh_hits:
         log(f"\n⚪ 白名单跳过: {', '.join(sorted(wh_hits))}")
     log(f"\n🚨 签名命中 {len(ban_map)} IP (≥{SIG_MIN_HITS}次/类别), 新封 {len(new_ips)}:")
@@ -668,7 +672,7 @@ def do_ips():
     return "\n".join(buf)
 
 def do_analyze():
-    now = datetime.now(UTC+8); buf = []
+    now = datetime.now(TZ); buf = []
     def log(s=""): print(s); buf.append(s)
     log(f"{'='*60}\n  IP 分析 — {now.strftime('%Y-%m-%d %H:%M:%S')} UTC+8\n{'='*60}")
     out = run(["iptables","-L","PERMA-BAN","-n","--line-numbers"])
@@ -716,7 +720,7 @@ def do_analyze():
     for n, s, c in rules:
         m = re.search(r'(\d{4}-\d{2}-\d{2})', c)
         if m and "/" not in s:
-            rd = datetime.strptime(m.group(1), "%Y-%m-%d").replace(tzinfo=UTC+8)
+            rd = datetime.strptime(m.group(1), "%Y-%m-%d").replace(tzinfo=TZ)
             ad = (now-rd).days
             if ad > OLD_THRESHOLD_DAYS: aged.append((n, s, c, ad, check_ip_still_active(s)))
     if aged:
@@ -738,7 +742,7 @@ def do_cleanup(dry_run=False):
     dry_run=True 只报告不动手（默认 False 执行删除）。
     安全：子网段不去重只提示；老化只删单 IP 且日志确认无活跃；删除前先验证存在。
     """
-    now = datetime.now(UTC+8); buf = []
+    now = datetime.now(TZ); buf = []
     def log(s=""): print(s); buf.append(s)
     log(f"🧹 PERMA-BAN 自动维护 — {now.strftime('%Y-%m-%d %H:%M:%S')} UTC+8{' (DRY-RUN)' if dry_run else ''}")
     log("=" * 50)
@@ -773,7 +777,7 @@ def do_cleanup(dry_run=False):
         if "/" in s: continue
         m = re.search(r'(\d{4}-\d{2}-\d{2})', c)
         if not m: continue
-        rd = datetime.strptime(m.group(1), "%Y-%m-%d").replace(tzinfo=UTC+8)
+        rd = datetime.strptime(m.group(1), "%Y-%m-%d").replace(tzinfo=TZ)
         ad = (now - rd).days
         if ad > OLD_THRESHOLD_DAYS:
             if not check_ip_still_active(s):
@@ -812,7 +816,7 @@ def do_cleanup(dry_run=False):
     return "\n".join(buf)
 
 def do_report():
-    now = datetime.now(UTC+8)
+    now = datetime.now(TZ)
     print(f"📋 PERMA-BAN ({now.strftime('%Y-%m-%d %H:%M')} UTC+8)")
     ip = get_perma_ban_ips(); sn = get_perma_ban_subnets()
     print(f"   IP: {len(ip)} | 子网: {len(sn)} | 总计: {len(ip)+len(sn)}")

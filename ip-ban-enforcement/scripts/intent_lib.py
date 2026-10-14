@@ -14,7 +14,7 @@ from collections import Counter
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-UTC+8 = timezone(timedelta(hours=8))
+TZ = timezone(timedelta(hours=8))
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 # ─── 配置加载 ───────────────────────────────────────
@@ -186,7 +186,7 @@ def collect_access_behaviors_all(target_ips, window_days=None, access_log=None):
     target_ips = set(target_ips)
     acc = {ip: {"uris": set(), "days": set(), "reqs": 0, "tls_junk": False, "scan_ua": False,
                 "uri_counter": Counter()} for ip in target_ips}
-    since = datetime.now(UTC+8) - timedelta(days=window_days)
+    since = datetime.now(TZ) - timedelta(days=window_days)
     pat = re.compile(r'^(\S+) \S+ \S+ \[([^\]]+)\] "(\S+) (\S+) [^"]*" \d+ \S+ "[^"]*" "([^"]*)"')
     try:
         for path in [access_log, access_log + ".1"]:

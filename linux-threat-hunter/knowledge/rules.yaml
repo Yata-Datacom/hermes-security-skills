@@ -65,8 +65,11 @@ rules:
     reason: 敏感管理端口外联疑似扫描
 
   # --- 排除项（误报防护）---
+  # exclude_when 在 evaluate() 里对 "hour=H proto=X port=N" 串做 re.search。
+  # 注意：日志拼接串只有 时间/协议/端口，不含主机名——按端口豁免（rsync=873, nfs=2049）。
+  # 如需按主机豁免，请在 log_hunter.py 的 evaluate() 里扩展拼接串并同步此正则。
   - name: known_backup_server
     enabled: true
-    exclude_when: '(backup|rsync|nfs|mirror|备份)'
+    exclude_when: 'proto=(tcp|6) port=(873|2049)\b'
     level: false_positive
-    reason: 备份/同步服务器正常上行流量
+    reason: 备份/同步服务端口（rsync 873 / nfs 2049）正常上行流量

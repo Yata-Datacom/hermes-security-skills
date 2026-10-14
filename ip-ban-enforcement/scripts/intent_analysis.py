@@ -24,7 +24,7 @@ from intent_lib import (
     intent_action, load_intent_rules, collect_access_behaviors_all,
 )
 
-UTC+8 = timezone(timedelta(hours=8))
+TZ = timezone(timedelta(hours=8))
 
 def intent_display(intent):
     """intent 可能是 'exploit' / 'mixed:recon+brute' / 'mixed'，返回带 emoji 的显示名。"""
@@ -127,7 +127,7 @@ def analyze_all(window_days=None, top_n=None):
 def format_report(data, top_n=None):
     """生成人类可读报告。"""
     if top_n is None: top_n = data.get("top_n", 15)
-    now = datetime.now(UTC+8)
+    now = datetime.now(TZ)
     lines = []
     lines.append(f"🎯 网络威胁意图分析 — {now.strftime('%Y-%m-%d %H:%M')} UTC+8 (窗口 {data['window_days']}d)")
     lines.append("=" * 58)
@@ -205,7 +205,7 @@ def main():
         if args.save:
             data = analyze_all()
             if not data.get("error"):
-                now = datetime.now(UTC+8).strftime("%Y-%m-%d")
+                now = datetime.now(TZ).strftime("%Y-%m-%d")
                 save_trend_history({"date": now, **data["intent_dist"]})
         run_cron_mode()
         return
@@ -213,7 +213,7 @@ def main():
     data = analyze_all(window_days=args.days, top_n=args.top)
 
     if args.save:
-        now = datetime.now(UTC+8).strftime("%Y-%m-%d")
+        now = datetime.now(TZ).strftime("%Y-%m-%d")
         save_trend_history({"date": now, **data["intent_dist"]})
 
     if args.json:
